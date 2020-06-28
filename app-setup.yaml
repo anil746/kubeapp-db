@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      type: db
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
+  minReadySeconds: 5    
+  template:
+    metadata:
+      labels:
+        type: db
+    spec:
+      containers:
+        - name: db
+          image: mongo:latest
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: "mongoadmin"
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: "redhat"
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: db-svc
+spec:
+  type: ClusterIP
+  selector:
+    type: db
+  ports:
+  - protocol: TCP
+    port: 27017
+    targetPort: 27017
+    
+---    
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      type: app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
+  minReadySeconds: 5
+  template:
+    metadata:
+      labels:
+        type: app
+    spec:
+      containers:
+        - name: backend
+          image: anil746/application-prep:nanoprecise-app
+          env:
+            - name: FLASK_CONFIG
+              value: "production"
+            - name: BOOTSTRAP_SERVERS 
+              value: "testmerge.kafka.nanoprecisedataservices.com:9094"
+            - name: KAFKA_API_VERSION 
+              value: "2.1.1"
+            - name: KAFKA_GROUP_ID
+              value: "MERGE"
+            - name: NOTIFICATION_AUTH_TOKEN 
+              value: "ZXlKaGJHY2lPaUpJVXpJMU5pSjkuZXlKcFpDSTZJbVZzWldOMGNtbGpTVzF3SW4wLjQ2eTdsVjNrUl9ZNlBVOFpNYVFxUHZMcV94aTFWcEwwbUhvempUWVFkSHc6ZTRjZjVkN2ViMDkwNGJmYmFhZTIyOTQ0MGNlMGYzYWM="
+            - name: NOTIFICATION_URL
+              value: "https://nanoprecisedataservices.com/sns/api/v1/"
+            - name: MONGO_USER 
+              value: "mongoadmin"
+            - name: MONGO_PASSWORD 
+              value: "redhat"    
+            - name: NOTIFICATION_URL  
+              value: "https://nanoprecisedataservices.com/sns/api/v1/"
+            - name: API_URL_BACKUP 
+              value: "http://35.165.144.24:5000/sensors/api/v2/data/"
+            - name: API_URL 
+              value: "http://35.165.144.24:5000/sensors/api/v2/data/"
+            - name: DASHBOARD_DB 
+              value: "npsc"
+            - name: PROCESSED_DB 
+              value: "npsc"
+            - name: SENSORDATA_CACHE 
+              value: "sensorDataDB"
+            - name: SENSOR_CACHE_DB_PORT 
+              value: "27017"
+            - name: SENSOR_CACHE_DB_HOST 
+              value: "db-svc"
