@@ -1,0 +1,63 @@
+version: "3.8"
+
+##Custom network for both app, db
+networks:
+  nanoprecise-nt:
+
+##Data volume for db
+volumes:
+  db-data:
+
+##Services 
+services:
+  db:
+     image: mongo:latest
+     networks:
+        - nanoprecise-nt
+     deploy:
+        replicas: 1
+        labels:
+          kind: db
+        mode: replicated     
+        restart_policy:
+           condition: on-failure
+           delay: 10s
+           max_attempts: 3
+           window: 120s      
+     environment:
+        MONGO_INITDB_ROOT_USERNAME: mongoadmin
+        MONGO_INITDB_ROOT_PASSWORD: redhat
+     volumes:
+        - db-data:/data/db
+  app:        
+     image: nanoprecise-app
+     networks:
+        - nanoprecise-nt
+     depends_on: 
+        - db
+     deploy:
+        mode: replicated
+        replicas: 1
+        labels:
+          kind: app
+        restart_policy:
+           condition: on-failure
+           delay: 10s
+           max_attempts: 3
+           window: 120s
+     environment:
+        FLASK_CONFIG: production
+        BOOTSTRAP_SERVERS: testmerge.kafka.nanoprecisedataservices.com:9094
+        KAFKA_API_VERSION: 2.1.1
+        KAFKA_GROUP_ID: MERGE
+        NOTIFICATION_AUTH_TOKEN: ZXlKaGJHY2lPaUpJVXpJMU5pSjkuZXlKcFpDSTZJbVZzWldOMGNtbGpTVzF3SW4wLjQ2eTdsVjNrUl9ZNlBVOFpNYVFxUHZMcV94aTFWcEwwbUhvempUWVFkSHc6ZTRjZjVkN2ViMDkwNGJmYmFhZTIyOTQ0MGNlMGYzYWM=     
+        MONGO_USER: mongoadmin
+        MONGO_PASSWORD: redhat    
+        NOTIFICATION_URL: https://nanoprecisedataservices.com/sns/api/v1/
+        API_URL_BACKUP: http://35.165.144.24:5000/sensors/api/v2/data/
+        API_URL: http://35.165.144.24:5000/sensors/api/v2/data/
+        DASHBOARD_DB: npsc
+        PROCESSED_DB: npsc
+        SENSORDATA_CACHE: sensorDataDB
+        SENSOR_CACHE_DB_PORT: 27017
+        SENSOR_CACHE_DB_HOST: db
